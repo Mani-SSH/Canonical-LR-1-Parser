@@ -112,8 +112,8 @@ class LR1Parser:
                 
             self.lr1_items.extend(new_sets)
 
-    def build_parsing_table(self):
-        """Build the LR(1) parsing table"""
+    def build_parsing_table(self) -> Dict[Tuple[int, str], Tuple[str, int]]:
+        """Build the LR(1) parsing table and return it"""
         self.build_lr1_sets()
         
         # Add reduce actions
@@ -128,6 +128,8 @@ class LR1Parser:
                     else:
                         self.parsing_table[(i, lookahead)] = ('reduce', 
                             (non_terminal, production))
+        
+        return self.parsing_table
 
     def parse_string(self, input_string: str) -> List[dict]:
         """Parse an input string and return the steps of the parsing process"""

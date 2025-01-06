@@ -86,12 +86,15 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({
         body: JSON.stringify(data),
       });
       const result = await response.json();
-      console.log("Response from backend:", result);
 
       // Transform the raw data
       const transformedSets = transformLr1Sets(result.lr1_sets);
       onLr1SetsGenerated(transformedSets); // Pass transformed data
-      onSubmit(result);
+
+      // Include parsing table in the result
+      onSubmit({ ...result, parsing_table: result.parsing_table });
+
+      console.log("Response from backend:", result);
     } catch (error) {
       console.error("Error submitting data to backend:", error);
       setError("Error submitting data to backend");
