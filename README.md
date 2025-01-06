@@ -23,7 +23,7 @@ This project is a C-LR(1) parser, which is a type of parser used in compiler des
 To get started with this project, clone the repository and navigate into the project directory.
 
 ```sh
-git clone https://github.com/yourusername/C-LR1-Parser.git
+git clone https://github.com/Mani-SSH/Canonical-LR-1-Parser.git
 cd C-LR1-Parser
 ```
 
