@@ -6,10 +6,13 @@ class Grammar(BaseModel):
     start_symbol: str
     terminals: Set[str] = set()
     non_terminals: Set[str] = set()
+    original_start_symbol: str = ""
 
     def __init__(self, **data):
         super().__init__(**data)
+        self.original_start_symbol = self.start_symbol
         self._initialize_symbols()
+        self._augment_grammar()
 
     def _initialize_symbols(self):
         """Initialize terminal and non-terminal sets from the productions"""
@@ -21,6 +24,13 @@ class Grammar(BaseModel):
                 for symbol in production.split():
                     if symbol not in self.non_terminals:
                         self.terminals.add(symbol)
+
+    def _augment_grammar(self):
+        """Add augmented start symbol S' -> S$"""
+        augmented_start = f"{self.original_start_symbol}'"
+        if augmented_start not in self.productions:
+            self.productions[augmented_start] = [f"{self.original_start_symbol} $"]
+            self.start_symbol = augmented_start
 
     def validate_grammar(self) -> bool:
         """Validate if the grammar is properly formed"""
@@ -39,6 +49,11 @@ class Grammar(BaseModel):
     def get_first_sets(self) -> Dict[str, Set[str]]:
         """Compute FIRST sets for all symbols"""
         first: Dict[str, Set[str]] = {symbol: set() for symbol in self.non_terminals | self.terminals}
+        
+        # Ensure the augmented start symbol is included
+        augmented_start = f"{self.original_start_symbol}'"
+        if augmented_start not in first:
+            first[augmented_start] = set()
         
         # Initialize FIRST sets for terminals
         for terminal in self.terminals:
@@ -74,8 +89,3 @@ class Grammar(BaseModel):
                         changed = True
                         
         return first
-
-    def get_first(self, symbol: str) -> Set[str]:
-        """Return the FIRST set of a given symbol"""
-        first_sets = self.get_first_sets()
-        return first_sets.get(symbol, set())

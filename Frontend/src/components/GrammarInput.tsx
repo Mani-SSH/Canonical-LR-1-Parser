@@ -3,6 +3,7 @@ import { Grammar, ParserInput } from "../types";
 
 interface GrammarInputProps {
   onSubmit: (input: ParserInput) => void;
+  onLr1SetsGenerated: (sets: any) => void; // Callback for LR(1) sets
 }
 
 const defaultGrammar: Grammar = {
@@ -13,13 +14,28 @@ const defaultGrammar: Grammar = {
   start_symbol: "S",
 };
 
-export const GrammarInput: React.FC<GrammarInputProps> = ({ onSubmit }) => {
+export const GrammarInput: React.FC<GrammarInputProps> = ({
+  onSubmit,
+  onLr1SetsGenerated,
+}) => {
   const [grammar, setGrammar] = useState<Grammar | string>(
     JSON.stringify(defaultGrammar, null, 2)
   );
-  // Update the input string to match the grammar
   const [inputString, setInputString] = useState<string>("a a b");
   const [error, setError] = useState<string>("");
+
+  // Transform raw LR(1) sets into the expected format
+  const transformLr1Sets = (rawSets: any[]): any[] => {
+    return rawSets.map((set, index) => ({
+      state: index,
+      items: set.map((item: any[]) => ({
+        non_terminal: item[0],
+        production: item[1],
+        dot_position: item[2],
+        lookahead: item[3],
+      })),
+    }));
+  };
 
   const handleGrammarChange = (value: string) => {
     setGrammar(value);
@@ -71,6 +87,10 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({ onSubmit }) => {
       });
       const result = await response.json();
       console.log("Response from backend:", result);
+
+      // Transform the raw data
+      const transformedSets = transformLr1Sets(result.lr1_sets);
+      onLr1SetsGenerated(transformedSets); // Pass transformed data
       onSubmit(result);
     } catch (error) {
       console.error("Error submitting data to backend:", error);
