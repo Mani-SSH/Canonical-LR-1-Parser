@@ -3,6 +3,7 @@ import { Grammar, ParserInput } from "../types";
 
 interface GrammarInputProps {
   onSubmit: (input: ParserInput) => void;
+  onLr1SetsGenerated: (sets: any) => void; // Callback for LR(1) sets
 }
 
 const defaultGrammar: Grammar = {
@@ -13,14 +14,28 @@ const defaultGrammar: Grammar = {
   start_symbol: "S",
 };
 
-export const GrammarInput: React.FC<GrammarInputProps> = ({ onSubmit }) => {
+export const GrammarInput: React.FC<GrammarInputProps> = ({
+  onSubmit,
+  onLr1SetsGenerated,
+}) => {
   const [grammar, setGrammar] = useState<Grammar | string>(
     JSON.stringify(defaultGrammar, null, 2)
   );
-  // Update the input string to match the grammar
   const [inputString, setInputString] = useState<string>("a a b");
   const [error, setError] = useState<string>("");
-  const [lr1Sets, setLr1Sets] = useState<any>(null);
+
+  // Transform raw LR(1) sets into the expected format
+  const transformLr1Sets = (rawSets: any[]): any[] => {
+    return rawSets.map((set, index) => ({
+      state: index,
+      items: set.map((item: any[]) => ({
+        non_terminal: item[0],
+        production: item[1],
+        dot_position: item[2],
+        lookahead: item[3],
+      })),
+    }));
+  };
 
   const handleGrammarChange = (value: string) => {
     setGrammar(value);
@@ -72,41 +87,15 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({ onSubmit }) => {
       });
       const result = await response.json();
       console.log("Response from backend:", result);
-      setLr1Sets(result.lr1_sets); // Set the LR(1) sets
+
+      // Transform the raw data
+      const transformedSets = transformLr1Sets(result.lr1_sets);
+      onLr1SetsGenerated(transformedSets); // Pass transformed data
       onSubmit(result);
     } catch (error) {
       console.error("Error submitting data to backend:", error);
       setError("Error submitting data to backend");
     }
-  };
-
-  const renderLr1SetsTable = (lr1Sets: any) => {
-    return (
-      <table className="table-auto w-full bg-gray-900 rounded-lg shadow-inner">
-        <thead>
-          <tr>
-            <th className="px-4 py-2">Index</th>
-            <th className="px-4 py-2">Items</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lr1Sets.map((set: any, index: number) => (
-            <tr key={index}>
-              <td className="border px-4 py-2">{index}</td>
-              <td className="border px-4 py-2">
-                <ul>
-                  {set.map((item: any, itemIndex: number) => (
-                    <li key={itemIndex}>
-                      {`(${item[0]}, ${item[1]}, ${item[2]}, ${item[3]})`}
-                    </li>
-                  ))}
-                </ul>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
   };
 
   return (
@@ -159,12 +148,6 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({ onSubmit }) => {
             Parse Input
           </button>
         </div>
-        {lr1Sets && (
-          <div className="mt-4">
-            <h3 className="text-lg font-bold">LR(1) Sets</h3>
-            {renderLr1SetsTable(lr1Sets)}
-          </div>
-        )}
       </div>
     </div>
   );
