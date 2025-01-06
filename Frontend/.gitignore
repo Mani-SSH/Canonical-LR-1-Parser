@@ -71,6 +71,8 @@ __sapper__/
 
 # Tailwind config
 !tailwind.config.js
+!eslint.config.js
+!postcss.config.js
 
 # Specific TypeScript files to include
 !src/components/**
