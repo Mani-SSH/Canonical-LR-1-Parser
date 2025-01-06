@@ -40,12 +40,17 @@ def parse():
     # Convert parsing table keys to strings
     parsing_table = {str(k): v for k, v in parsing_table.items()}
     
+    # Convert GOTO table keys to strings
+    goto_table = {str(k): v for k, v in parser.goto_table.items()}
+    print("GOTO table:", goto_table)
+    
     result = {
         "grammar": grammar_data,
         "input_string": input_string,
         "first_sets": first_sets,
         "lr1_sets": lr1_sets,  # Include converted LR(1) sets in the response
         "parsing_table": parsing_table,  # Include parsing table in the response
+        "goto_table": goto_table,  # Include GOTO table in the response
         "message": "Parsing successful"
     }
     return jsonify(result)

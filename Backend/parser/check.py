@@ -9,17 +9,17 @@ from parser.lr1parser import LR1Parser
 def main():
     # Define the grammar
     grammar_data = {
-  "productions": {
-    "S": [
-      "A A"
-    ],
-    "A": [
-      "a A",
-      "b"
-    ]
-  },
-  "start_symbol": "S"
-}
+      "productions": {
+        "S": [
+          "A A"
+        ],
+        "A": [
+          "a A",
+          "b"
+        ]
+      },
+      "start_symbol": "S"
+    }
 
     # Create Grammar object
     grammar = Grammar(**grammar_data)
@@ -40,6 +40,11 @@ def main():
         print(f"Item set {i}:")
         for item in item_set:
             print(f"  {item}")
+    
+    # Print GOTO table
+    print("\nGOTO Table:")
+    for (state, symbol), next_state in parser.goto_table.items():
+        print(f"State {state} with {symbol} -> State {next_state}")
 
 if __name__ == "__main__":
     main()
