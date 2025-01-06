@@ -31,18 +31,21 @@ def parse():
     # Create LR1Parser object and build LR(1) sets
     parser = LR1Parser(grammar)
     parser.build_lr1_sets()
-    
-    # Print LR(1) sets in the backend terminal
-    print("LR(1) sets:", parser.lr1_items)
+
+    parsing_table = parser.build_parsing_table()
     
     # Convert LR(1) sets to a JSON serializable format
     lr1_sets = [list(item) for item in parser.lr1_items]
+    
+    # Convert parsing table keys to strings
+    parsing_table = {str(k): v for k, v in parsing_table.items()}
     
     result = {
         "grammar": grammar_data,
         "input_string": input_string,
         "first_sets": first_sets,
         "lr1_sets": lr1_sets,  # Include converted LR(1) sets in the response
+        "parsing_table": parsing_table,  # Include parsing table in the response
         "message": "Parsing successful"
     }
     return jsonify(result)

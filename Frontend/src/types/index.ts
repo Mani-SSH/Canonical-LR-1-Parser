@@ -1,6 +1,6 @@
 export interface ParsingTableEntry {
   action: string;
-  value: string;
+  value: number | string[];
 }
 
 export interface ParsingStep {
