@@ -29,7 +29,7 @@ class Grammar(BaseModel):
         """Add augmented start symbol S' -> S$"""
         augmented_start = f"{self.original_start_symbol}'"
         if augmented_start not in self.productions:
-            self.productions[augmented_start] = self.original_start_symbol
+            self.productions[augmented_start] = [self.original_start_symbol]
             self.start_symbol = augmented_start
 
     def validate_grammar(self) -> bool:
