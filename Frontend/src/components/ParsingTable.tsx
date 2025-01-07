@@ -48,10 +48,7 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
       case "reduce":
         if (Array.isArray(value)) {
           const [nonTerminal, production] = value;
-          // Map the production to the correct reduction number
-          if (nonTerminal === "S" && production === "A A") return "R1";
-          if (nonTerminal === "A" && production === "a A") return "R2";
-          if (nonTerminal === "A" && production === "b") return "R3";
+          return `Reduce: ${nonTerminal}→${production}`;
         }
         return `R${value}`;
       case "accept":
