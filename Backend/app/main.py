@@ -27,36 +27,20 @@ def parse():
     
     # Create LR1Parser object and build LR(1) sets
     parser = LR1Parser(grammar)
-    parser.build_lr1_sets()
-
-    # Get both tables
-    parsing_table = parser.build_parsing_table()
-    goto_table = parser.goto_table
+    parser.build_parsing_table()
+    combined_table = parser.combine_tables()
+    parse_steps = parser.parse_input(input_string)
     
     # Convert LR(1) sets to a JSON serializable format
     lr1_sets = [list(item) for item in parser.lr1_items]
-    
-    # Merge GOTO table into parsing table
-    # For GOTO entries, we'll use ["goto", state_number] to match the format of ACTION entries
-    merged_table = {}
-    
-    # Add ACTION entries
-    for key, value in parsing_table.items():
-        merged_table[str(key)] = value
-    
-    # Add GOTO entries
-    for key, value in goto_table.items():
-        merged_table[str(key)] = ["goto", value]
-    
-    # Print the merged table for debugging
-    print("Merged table:", merged_table)
     
     result = {
         "grammar": grammar_data,
         "input_string": input_string,
         "first_sets": first_sets,
         "lr1_sets": lr1_sets,
-        "parsing_table": merged_table,  # Send only the merged table
+        "combined_table": combined_table,
+        "parse_steps": parse_steps,
         "message": "Parsing successful"
     }
     return jsonify(result)

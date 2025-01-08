@@ -35,3 +35,24 @@ export interface ParserResponse {
   parsing_table: Record<string, ParsingTableEntry>;
   parsing_steps: ParsingStep[];
 }
+
+export interface Step {
+  action: string;
+  action_key: string;
+  current_state: number;
+  current_symbol: string;
+  description: string;
+  input_buffer: string;
+  next_state?: number;
+  stack: number[];
+  symbol_stack: string[];
+  reduction?: {
+    non_terminal: string;
+    production: string;
+  };
+  goto?: {
+    state: number;
+    non_terminal: string;
+    next_state: number;
+  };
+}

@@ -1,21 +1,21 @@
 import React from "react";
 
 interface ParsingTableProps {
-  table: Record<string, [string, number | string[]]>;
+  table: Record<string, [string, number | [string, string]]>;
 }
 
 export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
-  // Extract unique states, terminal symbols, and non-terminal symbols from table keys
   const states = new Set<number>();
   const terminalSymbols = new Set<string>();
   const nonTerminalSymbols = new Set<string>();
 
-  // First pass: collect all states from the table keys
   Object.keys(table).forEach((key) => {
-    const match = key.match(/\((\d+), '(.+)'\)/);
+    const match = key.match(/\((\d+),\s*'(.+)'\)/);
     if (match) {
       const [_, state, symbol] = match;
       states.add(parseInt(state));
+
+      // Identify terminals and non-terminals
       if (symbol === symbol.toUpperCase() && symbol !== "$") {
         nonTerminalSymbols.add(symbol);
       } else {
@@ -24,20 +24,17 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
     }
   });
 
-  // Ensure we have all states from 0 to the maximum state
   const maxState = Math.max(...states);
   for (let i = 0; i <= maxState; i++) {
     states.add(i);
   }
 
-  // Sort states and symbols
   const sortedStates = Array.from(states).sort((a, b) => a - b);
   const sortedTerminals = Array.from(terminalSymbols).sort();
   const sortedNonTerminals = Array.from(nonTerminalSymbols).sort();
 
-  // Format table entry for display
   const formatEntry = (
-    entry: [string, number | string[]] | undefined
+    entry: [string, number | [string, string]] | undefined
   ): string => {
     if (!entry) return "";
     const [action, value] = entry;
@@ -48,11 +45,11 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
       case "reduce":
         if (Array.isArray(value)) {
           const [nonTerminal, production] = value;
-          return `Reduce: ${nonTerminal}→${production}`;
+          return `Reduce:${nonTerminal}→${production}`;
         }
-        return `R${value}`;
+        return `Reduce:${value}`;
       case "accept":
-        return "accept";
+        return "Accept";
       case "goto":
         return `${value}`;
       default:
@@ -61,9 +58,9 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
   };
 
   return (
-    <div className="card w-full shadow-lg rounded-lg">
+    <div className="card w-full shadow-lg rounded-lg overflow-x-auto">
       <div className="p-4">
-        <table className="w-full border-collapse">
+        <table className="min-w-full border-collapse">
           <thead>
             <tr>
               <th className="border px-4 py-2" rowSpan={2}>
@@ -98,7 +95,9 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
           <tbody>
             {sortedStates.map((state) => (
               <tr key={state}>
-                <td className="border px-4 py-2 text-center">{state}</td>
+                <td className="border px-4 py-2 text-center font-medium">
+                  {state}
+                </td>
                 {sortedTerminals.map((symbol) => (
                   <td key={symbol} className="border px-4 py-2 text-center">
                     {formatEntry(table[`(${state}, '${symbol}')`])}

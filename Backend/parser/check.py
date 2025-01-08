@@ -9,17 +9,19 @@ from parser.lr1parser import LR1Parser
 def main():
     # Define the grammar
     grammar_data = {
-      "productions": {
-        "S": [
-          "A A"
-        ],
-        "A": [
-          "a A",
-          "b"
-        ]
-      },
-      "start_symbol": "S"
+        "productions": {
+            "S": [
+                "A A"
+            ],
+            "A": [
+                "a A",
+                "b"
+            ]
+        },
+        "start_symbol": "S"
     }
+
+    input_string = "aabb"
 
     # Create Grammar object
     grammar = Grammar(**grammar_data)
@@ -29,22 +31,12 @@ def main():
         print("Invalid grammar")
         return
 
-    # Create LR1Parser object
     parser = LR1Parser(grammar)
-
-    # Build LR(1) sets
-    parser.build_lr1_sets()
-
-    # Print LR(1) sets
-    for i, item_set in enumerate(parser.lr1_items):
-        print(f"Item set {i}:")
-        for item in item_set:
-            print(f"  {item}")
-    
-    # Print GOTO table
-    print("\nGOTO Table:")
-    for (state, symbol), next_state in parser.goto_table.items():
-        print(f"State {state} with {symbol} -> State {next_state}")
+    parser.build_parsing_table()
+    parser.combine_tables()
+    result = parser.parse_input(input_string)
+    for i in result:
+        print(i)
 
 if __name__ == "__main__":
     main()

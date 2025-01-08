@@ -7,6 +7,7 @@ class LR1Parser:
         self.lr1_items: List[Set[Tuple[str, str, int, str]]] = []  # List of sets of LR(1) items
         self.parsing_table: Dict[Tuple[int, str], Tuple[str, int]] = {}  # (state, symbol) -> (action, next_state)
         self.goto_table: Dict[Tuple[int, str], int] = {}  # (state, non-terminal) -> next_state
+        self.combined_table: Dict[str, List] = {}  # Initialize combined_table
 
     def compute_closure(self, items: Set[Tuple[str, str, int, str]]) -> Set[Tuple[str, str, int, str]]:
         """Compute closure of a set of LR(1) items"""
@@ -136,47 +137,147 @@ class LR1Parser:
                         self.parsing_table[(i, lookahead)] = ('reduce', 
                             (non_terminal, production))
         
+        # Debugging: Print the parsing table
+        print("Parsing Table:")
+        for key, value in self.parsing_table.items():
+            print(f"{key}: {value}")
+        
         return self.parsing_table
 
-    def parse_string(self, input_string: str) -> List[dict]:
-        """Parse an input string and return the steps of the parsing process"""
-        if not self.parsing_table:
-            self.build_parsing_table()
+    def combine_tables(self) -> Dict[str, List]:
+        """Combine parsing and goto tables into a single table."""
+        self.combined_table = {}
+        
+        # Add ACTION entries from parsing table
+        for (state, symbol), value in self.parsing_table.items():
+            key = f"({state}, '{symbol}')"
+            self.combined_table[key] = value
+        
+        # Add GOTO entries
+        for (state, non_terminal), value in self.goto_table.items():
+            key = f"({state}, '{non_terminal}')"
+            self.combined_table[key] = ['goto', value]
+        
+        # Debugging: Print the combined table
+        print("\nCombined Table:")
+        for key, value in self.combined_table.items():
+            print(f"{key}: {value}")
+        
+        return self.combined_table
 
+    def parse_input(self, input_string: str) -> bool:
+        """
+        Parse an input string and return a list of steps for frontend visualization.
+        Each step contains the complete state of the parser at that point.
+        """
+        # Initialize parsing components
+        stack = [0]
+        input_buffer = list(input_string + '$')
+        symbol_stack = []
         steps = []
-        stack = [(0, '$')]  # (state, symbol)
-        symbols = input_string.split() + ['$']
-        cursor = 0
-
+        
         while True:
-            current_state = stack[-1][0]
-            current_symbol = symbols[cursor]
-
-            if (current_state, current_symbol) not in self.parsing_table:
-                raise ValueError(f"Parsing error at symbol {current_symbol}")
-
-            action, value = self.parsing_table[(current_state, current_symbol)]
-            steps.append({
-                'stack': [(s, sym) for s, sym in stack],
-                'input': symbols[cursor:],
-                'action': action,
-                'value': str(value)
-            })
-
-            if action == 'shift':
-                stack.append((value, current_symbol))
-                cursor += 1
-            elif action == 'reduce':
-                non_terminal, production = value
-                num_symbols = len(production.split())
-                for _ in range(num_symbols):
+            current_state = stack[-1]
+            current_symbol = input_buffer[0]
+            action_key = f"({current_state}, '{current_symbol}')"
+            
+            # Record current configuration before action
+            current_step = {
+                'stack': stack.copy(),
+                'symbol_stack': symbol_stack.copy(),
+                'input_buffer': ''.join(input_buffer),
+                'current_state': current_state,
+                'current_symbol': current_symbol,
+                'action_key': action_key,
+            }
+            
+            if action_key not in self.combined_table:
+                current_step.update({
+                    'action': 'error',
+                    'description': f"No action found for {action_key}",
+                    'status': 'rejected'
+                })
+                steps.append(current_step)
+                return steps
+            
+            action = self.combined_table[action_key]
+            current_step['action'] = action[0]
+            
+            if action[0] == 'shift':
+                next_state = action[1]
+                current_step.update({
+                    'description': f"Shift {current_symbol} to state {next_state}",
+                    'next_state': next_state
+                })
+                steps.append(current_step)
+                
+                # Perform shift
+                stack.append(next_state)
+                symbol_stack.append(current_symbol)
+                input_buffer.pop(0)
+                
+            elif action[0] == 'reduce':
+                non_terminal, production = action[1]
+                production_length = len(production.split())
+                
+                current_step.update({
+                    'description': f"Reduce by {non_terminal} → {production}",
+                    'reduction': {
+                        'non_terminal': non_terminal,
+                        'production': production,
+                        'length': production_length
+                    }
+                })
+                
+                # Record state before reduction
+                steps.append(current_step)
+                
+                # Perform reduction
+                for _ in range(production_length):
                     stack.pop()
-                prev_state = stack[-1][0]
-                next_state = self.goto_table[(prev_state, non_terminal)]
-                stack.append((next_state, non_terminal))
-            elif action == 'accept':
-                break
+                    symbol_stack.pop()
+                
+                symbol_stack.append(non_terminal)
+                goto_state = stack[-1]
+                goto_key = f"({goto_state}, '{non_terminal}')"
+                
+                if goto_key not in self.combined_table:
+                    current_step.update({
+                        'action': 'error',
+                        'description': f"No goto action found for {goto_key}",
+                        'status': 'rejected'
+                    })
+                    steps.append(current_step)
+                    return steps
+                
+                goto_action = self.combined_table[goto_key]
+                next_state = goto_action[1]
+                
+                # Add goto information
+                current_step.update({
+                    'goto': {
+                        'state': goto_state,
+                        'non_terminal': non_terminal,
+                        'next_state': next_state
+                    }
+                })
+                
+                stack.append(next_state)
+                
+            elif action[0] == 'accept':
+                current_step.update({
+                    'description': "Input string accepted!",
+                    'status': 'accepted'
+                })
+                steps.append(current_step)
+                return steps
+                
             else:
-                raise ValueError('Invalid action')
+                current_step.update({
+                    'action': 'error',
+                    'description': f"Invalid action {action}",
+                    'status': 'rejected'
+                })
+                steps.append(current_step)
+                return steps
 
-        return steps

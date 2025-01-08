@@ -21,7 +21,7 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({
   const [grammar, setGrammar] = useState<Grammar | string>(
     JSON.stringify(defaultGrammar, null, 2)
   );
-  const [inputString, setInputString] = useState<string>("a a b");
+  const [inputString, setInputString] = useState<string>("aabb");
   const [error, setError] = useState<string>("");
 
   // Transform raw LR(1) sets into the expected format
@@ -94,7 +94,7 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({
       // Include parsing table in the result
       onSubmit({ ...result, parsing_table: result.parsing_table });
 
-      console.log("Response from backend:", result);
+      console.log("Response from backend:", result); // Log the response data
     } catch (error) {
       console.error("Error submitting data to backend:", error);
       setError("Error submitting data to backend");
