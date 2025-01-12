@@ -81,7 +81,7 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
             </tr>
             <tr>
               {sortedTerminals.map((symbol) => (
-                <th key={symbol} className="border px-4 py-2 text-center">
+                <th key={symbol} className="border px-4 py-2  text-center">
                   {symbol}
                 </th>
               ))}
@@ -95,17 +95,17 @@ export const ParsingTable: React.FC<ParsingTableProps> = ({ table }) => {
           <tbody>
             {sortedStates.map((state) => (
               <tr key={state}>
-                <td className="border px-4 py-2 text-center font-medium">
+                <td className=" font-serif border px-4 py-2 text-center font-medium">
                   {state}
                 </td>
                 {sortedTerminals.map((symbol) => (
-                  <td key={symbol} className="border px-4 py-2 text-center">
-                    {formatEntry(table[`(${state}, '${symbol}')`])}
+                  <td key={symbol} className="font-serif border px-4 py-2 text-center">
+                    {formatEntry(table[`(${state}, '${ symbol}')`])}
                   </td>
                 ))}
                 {sortedNonTerminals.map((symbol) => (
-                  <td key={symbol} className="border px-4 py-2 text-center">
-                    {formatEntry(table[`(${state}, '${symbol}')`])}
+                  <td key={symbol} className=" font-serif border px-4 py-2 text-center">
+                    {formatEntry(table[`(${state}, '${ symbol}')`])}
                   </td>
                 ))}
               </tr>

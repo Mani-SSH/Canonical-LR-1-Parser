@@ -1,28 +1,29 @@
-import React, { useState } from "react";
-import { Grammar, ParserInput } from "../types";
+import React, { useState } from 'react';
+import { ParserInput } from "../types";
 
-interface GrammarInputProps {
-  onSubmit: (input: ParserInput) => void;
-  onLr1SetsGenerated: (sets: any) => void; // Callback for LR(1) sets
+interface Production {
+  nonTerminal: string;
+  productions: string[];
 }
 
-const defaultGrammar: Grammar = {
-  productions: {
-    S: ["A A"],
-    A: ["a A", "b"],
-  },
-  start_symbol: "S",
-};
+interface GrammarBuilderProps {
+  onSubmit: (input: ParserInput) => void;
+  onLr1SetsGenerated: (sets: any) => void;
+}
 
-export const GrammarInput: React.FC<GrammarInputProps> = ({
-  onSubmit,
-  onLr1SetsGenerated,
-}) => {
-  const [grammar, setGrammar] = useState<Grammar | string>(
-    JSON.stringify(defaultGrammar, null, 2)
-  );
-  const [inputString, setInputString] = useState<string>("aabb");
-  const [error, setError] = useState<string>("");
+export const GrammarInput: React.FC<GrammarBuilderProps> = ({ onSubmit, onLr1SetsGenerated }) => {
+  const [startSymbol, setStartSymbol] = useState<string>('S');
+  const [newNonTerminal, setNewNonTerminal] = useState<string>('');
+  const [productions, setProductions] = useState<Production[]>([
+    { nonTerminal: 'S', productions: [] },
+    { nonTerminal: 'A', productions: [] }
+  ]);
+  const [inputString, setInputString] = useState<string>('aabb');
+  const [newProduction, setNewProduction] = useState<{ [key: string]: string }>({
+    'S': '',
+    'A': ''
+  });
+  const [error, setError] = useState<string>('');
 
   // Transform raw LR(1) sets into the expected format
   const transformLr1Sets = (rawSets: any[]): any[] => {
@@ -37,120 +38,248 @@ export const GrammarInput: React.FC<GrammarInputProps> = ({
     }));
   };
 
-  const handleGrammarChange = (value: string) => {
-    setGrammar(value);
+  const handleAddNonTerminal = () => {
+    if (newNonTerminal && !productions.find(p => p.nonTerminal === newNonTerminal)) {
+      setProductions([...productions, { nonTerminal: newNonTerminal, productions: [] }]);
+      setNewProduction({ ...newProduction, [newNonTerminal]: '' });
+      setNewNonTerminal('');
+    }
   };
 
-  const handleGrammarSubmit = () => {
-    try {
-      const parsed = JSON.parse(grammar as string);
-      if (parsed.productions && parsed.start_symbol) {
-        setGrammar(JSON.stringify(parsed, null, 2));
-        setError("");
-      } else {
-        throw new Error("Invalid grammar format");
+  const normalizeProductionString = (input: string): string => {
+    // Remove extra spaces and split by spaces
+    const tokens = input.trim().split(/\s+/);
+    
+    // Handle cases where tokens might be stuck together
+    const separatedTokens = tokens.flatMap(token => {
+      // If token is exactly 'AA', split it into ['A', 'A']
+      if (token === 'AA') return ['A', 'A'];
+      
+      // If token contains 'A' followed by another character
+      if (token.includes('A')) {
+        return token.split('A').reduce((acc: string[], part, index, array) => {
+          if (index === 0 && part === '') {
+            acc.push('A');
+          } else if (index < array.length - 1) {
+            if (part !== '') acc.push(part);
+            acc.push('A');
+          } else if (part !== '') {
+            acc.push(part);
+          }
+          return acc;
+        }, []);
       }
-    } catch (e) {
-      console.error("Error parsing JSON:", e);
-      setError(
-        "Invalid JSON format: " + (e instanceof Error ? e.message : String(e))
-      );
+      
+      return [token];
+    });
+
+    // Join with single spaces
+    return separatedTokens.join(' ');
+  };
+
+  const handleAddProduction = (nonTerminal: string) => {
+    if (newProduction[nonTerminal].trim()) {
+      const normalizedProduction = normalizeProductionString(newProduction[nonTerminal]);
+      setProductions(productions.map(p => 
+        p.nonTerminal === nonTerminal 
+          ? { ...p, productions: [...p.productions, normalizedProduction] }
+          : p
+      ));
+      setNewProduction({ ...newProduction, [nonTerminal]: '' });
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleParseInput = async (event: React.MouseEvent) => {
     event.preventDefault();
-    let parsedGrammar: Grammar;
+    setError('');
 
-    try {
-      parsedGrammar =
-        typeof grammar === "string" ? JSON.parse(grammar) : grammar;
-    } catch (e) {
-      setError("Invalid JSON format");
-      return;
-    }
+    // Normalize the input string before sending
+    const normalizedInputString = normalizeProductionString(inputString);
 
-    const data: ParserInput = {
-      grammar: parsedGrammar,
-      input_string: inputString,
+    // Convert productions to the expected format
+    const grammarData: ParserInput = {
+      grammar: {
+        productions: productions.reduce((acc, curr) => ({
+          ...acc,
+          [curr.nonTerminal]: curr.productions
+        }), {}),
+        start_symbol: startSymbol
+      },
+      input_string: normalizedInputString
     };
 
-    console.log("Submitting data:", data); // Log the request data
-
     try {
-      const response = await fetch("http://localhost:5000/parse", {
-        method: "POST",
+      console.log("Submitting data:", grammarData);
+      
+      const response = await fetch('http://localhost:5000/parse', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(grammarData)
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log("Response from backend:", result);
 
-      // Transform the raw data
       const transformedSets = transformLr1Sets(result.lr1_sets);
-      onLr1SetsGenerated(transformedSets); // Pass transformed data
+      onLr1SetsGenerated(transformedSets);
 
-      // Include parsing table in the result
       onSubmit({ ...result, parsing_table: result.parsing_table });
-
-      console.log("Response from backend:", result); // Log the response data
     } catch (error) {
-      console.error("Error submitting data to backend:", error);
-      setError("Error submitting data to backend");
+      console.error('Error parsing input:', error);
+      setError(`Error: ${error instanceof Error ? error.message : 'Failed to parse input'}`);
     }
   };
 
+  const handleReset = () => {
+    setStartSymbol('S');
+    setNewNonTerminal('');
+    setProductions([
+      { nonTerminal: 'S', productions: [] },
+      { nonTerminal: 'A', productions: [] }
+    ]);
+    setInputString('aabb');
+    setNewProduction({
+      'S': '',
+      'A': ''
+    });
+    setError('');
+  };
+
+
   return (
-    <div className="card w-full shadow-lg rounded-lg">
-      <div className="card-header bg-red-500 text-white p-4 rounded-t-lg">
-        <h2 className="card-title text-xl font-bold">Grammar Input</h2>
+    <div className="<min-h-screen mx-auto p-4">
+      <div className=" text-white p-4 rounded-t-lg">
+        <h1 className="text-2xl font-bold">Grammar Builder</h1>
       </div>
-      <div className="card-content p-4 space-y-4">
+      
+      <div className=" p-6  space-y-6">
         <div>
-          <label className="block text-sm font-medium mb-2">
-            Grammar (JSON format)
+          <label className="block text-sm font-medium text-gray-200 mb-2">
+            Start Symbol
           </label>
-          <textarea
-            value={
-              typeof grammar === "string"
-                ? grammar
-                : JSON.stringify(grammar, null, 2)
-            }
-            onChange={(e) => handleGrammarChange(e.target.value)}
-            className="h-64 font-mono w-full p-2 border rounded-lg shadow-inner"
-            placeholder="Enter grammar in JSON format..."
-          />
-          <button
-            onClick={handleGrammarSubmit}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 mt-2"
+          <select
+            value={startSymbol}
+            onChange={(e) => setStartSymbol(e.target.value)}
+            className="w-full p-2 border rounded-md"
           >
-            Submit Grammar
-          </button>
+            {productions.map(p => (
+              <option key={p.nonTerminal} value={p.nonTerminal}>
+                {p.nonTerminal}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-2">Input String</label>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200 mb-2">
+            Add Non-Terminal
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newNonTerminal}
+              onChange={(e) => setNewNonTerminal(e.target.value)}
+              placeholder="New non-terminal (e.g., B)"
+              className="flex-1 p-2 border rounded-md"
+            />
+            <button
+              onClick={handleAddNonTerminal}
+              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h2 className="text-lg text-gray-200 font-medium mb-4">New Production:</h2>
+            {productions.map(({ nonTerminal }) => (
+              <div key={nonTerminal} className="mb-4">
+          <label className="block text-sm font-medium text-gray-200 mb-2">
+            {nonTerminal}
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newProduction[nonTerminal]}
+              onChange={(e) => setNewProduction({
+                ...newProduction,
+                [nonTerminal]: e.target.value
+              })}
+              className="flex-1 p-2 border rounded-md"
+              placeholder="Enter production rule..."
+            />
+            <button
+              onClick={() => handleAddProduction(nonTerminal)}
+              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+            >
+              →
+            </button>
+          </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg text-gray-200 font-medium">
+          Productions
+              </h2>
+              <button
+              onClick={handleReset}
+              className="bg-red-500 ml-60 text-xs text-white px-4 rounded-md hover:bg-red-600"
+              >
+              X
+              </button>
+            </div>
+
+            
+            <div className="font-serif bg-gray-100 bg-opacity-95 min-h-40 text-center py-8 text-gray-700 rounded-md" style={{ minHeight: `${productions.length * 5}rem` }}>
+              {productions.map(({ nonTerminal, productions }) => (
+          <div key={nonTerminal} className="mb-2">
+            {productions.length > 0 && (
+              <div>
+                <span className="font-medium">{nonTerminal}</span> →{' '}
+                {productions.join(' | ')}
+              </div>
+            )}
+          </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200 mb-2">
+            Input String
+          </label>
           <input
+            type="text"
             value={inputString}
             onChange={(e) => setInputString(e.target.value)}
-            className="w-full p-2 border rounded-lg shadow-inner"
-            placeholder="Enter input string..."
+            className="w-full p-2 border rounded-md"
           />
         </div>
+
         {error && (
-          <div className="alert alert-destructive bg-red-100 text-red-700 p-2 rounded-lg mt-4">
-            <div className="alert-description">{error}</div>
+          <div className="bg-red-100 text-red-700 p-3 rounded-md">
+            {error}
           </div>
         )}
-        <div className="mt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={!!error}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 disabled:opacity-50"
-          >
-            Parse Input
-          </button>
-        </div>
+
+        <button
+          onClick={handleParseInput}
+          className="w-full bg-red-500 text-white py-3 rounded-md hover:bg-red-600 transition-colors"
+        >
+          Parse Input
+        </button>
       </div>
     </div>
   );

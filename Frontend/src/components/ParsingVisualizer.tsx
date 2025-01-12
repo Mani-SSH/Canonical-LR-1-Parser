@@ -16,7 +16,7 @@ const ParsingVisualizer = ({ steps }: { steps: Step[] }) => {
         <button
           onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
           disabled={currentStep === 0}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
         >
           Previous
         </button>
@@ -24,11 +24,13 @@ const ParsingVisualizer = ({ steps }: { steps: Step[] }) => {
           Step {currentStep + 1} of {steps.length}
         </span>
         <button
+        className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
           onClick={() =>
             setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1))
+            
           }
           disabled={currentStep === steps.length - 1}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          
         >
           Next
         </button>
@@ -74,7 +76,7 @@ const ParsingVisualizer = ({ steps }: { steps: Step[] }) => {
                 className={`w-10 h-10 flex items-center justify-center border rounded
                   ${
                     idx === 0
-                      ? "bg-yellow-500 border-yellow-500"
+                      ? "bg-red-500 border-yellow-500"
                       : "border-gray-300"
                   }`}
               >
